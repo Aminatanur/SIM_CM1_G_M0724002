@@ -1,0 +1,1240 @@
+---
+title: "Analisis Database Sakila"
+author: " Aminata Nur Maulina"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    theme: flatly
+    highlight: tango
+    code_folding: show
+    number_sections: false
+    self_contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 10,
+  fig.height = 6,
+  out.width = "100%"
+)
+```
+
+```{css, echo=FALSE}
+/* ============================
+   GLOBAL & FONT
+   ============================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&family=Playfair+Display:wght@700&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: #2d3748;
+  background-color: #f7f9fc;
+  line-height: 1.8;
+}
+
+/* ============================
+   HERO HEADER
+   ============================ */
+.hero-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #533483 100%);
+  padding: 60px 40px;
+  border-radius: 16px;
+  margin-bottom: 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.hero-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%);
+  animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.hero-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.8em;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+  letter-spacing: -0.5px;
+}
+
+.hero-subtitle {
+  font-size: 1.15em;
+  color: #a0c4ff;
+  margin: 0 0 24px 0;
+  font-weight: 400;
+}
+
+.hero-meta {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.hero-badge {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  padding: 6px 18px;
+  color: #e2e8f0;
+  font-size: 0.85em;
+  backdrop-filter: blur(10px);
+}
+
+/* ============================
+   SECTION HEADERS
+   ============================ */
+h1, h2, h3, h4 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}
+
+h2 {
+  color: #1a202c;
+  font-size: 1.6em;
+  border-left: 5px solid #4361ee;
+  padding-left: 16px;
+  margin-top: 50px;
+  margin-bottom: 20px;
+}
+
+h3 {
+  color: #2d3748;
+  font-size: 1.2em;
+  margin-top: 30px;
+}
+
+/* ============================
+   INFO BOXES
+   ============================ */
+.info-box {
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin: 20px 0;
+  border-left: 5px solid;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  position: relative;
+}
+
+.info-box.insight {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-color: #3b82f6;
+}
+
+.info-box.formula {
+  background: linear-gradient(135deg, #faf5ff, #ede9fe);
+  border-color: #7c3aed;
+}
+
+.info-box.result {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border-color: #16a34a;
+}
+
+.info-box.warning {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border-color: #d97706;
+}
+
+.info-box-title {
+  font-weight: 700;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+/* ============================
+   STAT CARDS
+   ============================ */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border-top: 4px solid;
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+}
+
+.stat-card.blue  { border-color: #3b82f6; }
+.stat-card.green { border-color: #10b981; }
+.stat-card.purple{ border-color: #8b5cf6; }
+.stat-card.orange{ border-color: #f59e0b; }
+.stat-card.red   { border-color: #ef4444; }
+
+.stat-number {
+  font-size: 2em;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-card.blue .stat-number   { color: #3b82f6; }
+.stat-card.green .stat-number  { color: #10b981; }
+.stat-card.purple .stat-number { color: #8b5cf6; }
+.stat-card.orange .stat-number { color: #f59e0b; }
+.stat-card.red .stat-number    { color: #ef4444; }
+
+.stat-label {
+  font-size: 0.8em;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ============================
+   FLOW DIAGRAM
+   ============================ */
+.flow-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0;
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.flow-step {
+  background: linear-gradient(135deg, #4361ee, #7209b7);
+  color: white;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 0.82em;
+  font-weight: 600;
+  text-align: center;
+  min-width: 110px;
+}
+
+.flow-arrow {
+  color: #9ca3af;
+  font-size: 1.4em;
+}
+
+/* ============================
+   CLUSTER PROFILE TABLE
+   ============================ */
+.cluster-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  margin: 20px 0;
+}
+
+.cluster-table th {
+  background: linear-gradient(135deg, #1a1a2e, #4361ee);
+  color: white;
+  padding: 14px 18px;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cluster-table td {
+  padding: 12px 18px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.9em;
+}
+
+.cluster-table tr:nth-child(even) { background: #f9fafb; }
+.cluster-table tr:hover { background: #eff6ff; }
+
+/* ============================
+   CODE BLOCKS
+   ============================ */
+pre, code {
+  font-family: 'Fira Code', monospace !important;
+}
+
+pre {
+  background: #1e1e2e !important;
+  border-radius: 10px !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+/* ============================
+   TOC
+   ============================ */
+#TOC {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  font-size: 0.88em;
+}
+
+#TOC ul { padding-left: 18px; }
+#TOC a { color: #4361ee; text-decoration: none; }
+#TOC a:hover { color: #7209b7; text-decoration: underline; }
+
+/* ============================
+   FOOTER
+   ============================ */
+.report-footer {
+  margin-top: 60px;
+  padding: 30px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border-radius: 12px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.85em;
+}
+
+.divider {
+  height: 3px;
+  background: linear-gradient(90deg, #4361ee, #7209b7, #f72585);
+  border-radius: 3px;
+  margin: 40px 0;
+}
+```
+
+<!-- ============================================================
+     HERO HEADER
+     ============================================================ -->
+<div class="hero-header">
+  <div class="hero-title"> Segmentasi Pelanggan DVD Rental</div>
+  <div class="hero-subtitle">Analisis K-Means Clustering pada Database Sakila &mdash; Menggali Pola Perilaku Konsumen</div>
+</div>
+
+
+## 1. Deskripsi Insight & Latar Belakang
+
+<div class="info-box insight">
+<div class="info-box-title"> Insight Utama</div>
+Dalam bisnis rental film, **tidak semua pelanggan bernilai sama**. Sebagian pelanggan menyewa sangat sering dengan nilai transaksi tinggi, sementara yang lain hanya sesekali. Memahami segmentasi ini secara data-driven memungkinkan pemilik bisnis untuk merancang strategi pemasaran yang tepat sasaran mulai dari program loyalitas hingga kampanye reaktivasi pelanggan pasif.
+</div>
+
+Analisis ini menggunakan database **Sakila** *sample database* resmi MySQL yang merepresentasikan sistem rental DVD  untuk menjawab pertanyaan:
+
+> *"Dapatkah kita mengidentifikasi segmen-segmen pelanggan yang berbeda berdasarkan perilaku sewa mereka, dan apa karakteristik masing-masing segmen tersebut?"*
+
+### Kerangka Analisis (RFM)
+
+Membangun profil pelanggan menggunakan pendekatan **RFM**:
+
+<div class="info-box formula">
+<div class="info-box-title">Definisi Variabel RFM</div>
+
+$$
+\text{Recency} = \max(\text{rental\_date}) - \text{rental\_date}_i \quad [\text{hari sejak transaksi terakhir}]
+$$
+
+$$
+\text{Frequency} = \sum_{i} \mathbf{1}[\text{customer\_id} = c] \quad [\text{total jumlah rental}]
+$$
+
+$$
+\text{Monetary} = \sum_{i} \text{amount}_i \quad [\text{total pembayaran dalam USD}]
+$$
+
+</div>
+
+### Alur Analisis
+
+<div class="flow-container">
+  <div class="flow-step"> Load Data</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step"> Feature Engineering RFM</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">EDA & Visualisasi</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step"> Normalisasi</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step"> Elbow + Silhouette</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step"> K-Means</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step"> Profiling & Interpretasi</div>
+</div>
+
+<div class="divider"></div>
+
+## 2. Persiapan Data
+
+### 2.1 Library yang Digunakan
+
+```{r libraries}
+# === Data Manipulation ===
+library(DBI)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+
+# === Visualisasi ===
+library(ggplot2)
+library(ggExtra)
+library(patchwork)
+library(scales)
+library(viridis)
+library(ggridges)
+library(GGally)
+
+# === Clustering & Analisis ===
+library(cluster)
+library(factoextra)
+library(NbClust)
+
+# === Tabel Interaktif ===
+library(knitr)
+library(kableExtra)
+```
+
+### 2.2 Koneksi Database & Ekstraksi Data
+
+```{r Koneksi ke MySQL, echo=FALSE}
+# =============================================================
+# Koneksi dengan MySQL
+# =============================================================
+con <- DBI::dbConnect(odbc::odbc(),
+                      Driver = "MySQL ODBC 8.0 ANSI Driver",
+                      Server = "127.0.0.1",
+                      UID = "root",
+                      Database = "sakila",
+                      PWD = "4minataNM",
+                      Port = 3306)
+
+# Verifikasi koneksi
+dbListTables(con)
+```
+
+```{r Pengambilan Data}
+#Query: Gabungkan rental + payment + customer
+query_rfm <- "
+  SELECT
+    c.customer_id,
+    CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
+    c.email,
+    MAX(r.rental_date)                     AS last_rental_date,
+    COUNT(DISTINCT r.rental_id)            AS frequency,
+    COALESCE(SUM(p.amount), 0)             AS monetary
+  FROM customer c
+  LEFT JOIN rental  r ON c.customer_id = r.customer_id
+  LEFT JOIN payment p ON r.rental_id   = p.rental_id
+  WHERE c.active = 1
+  GROUP BY c.customer_id, c.first_name, c.last_name, c.email
+  HAVING COUNT(DISTINCT r.rental_id) > 0
+  ORDER BY monetary DESC;
+"
+
+df_raw <- dbGetQuery(con, query_rfm)
+#Hitung Recency (hari sejak rental terakhir)
+ref_date <- as.Date("2006-02-15")   # tanggal referensi = maks rental_date di sakila
+df_raw$last_rental_date <- as.Date(df_raw$last_rental_date)
+df_raw$recency <- as.numeric(ref_date - df_raw$last_rental_date)
+
+```
+
+
+
+```{r load data Time Series }
+query_ts <- "
+  SELECT
+    DATE_FORMAT(payment_date, '%Y-%m') AS bulan,
+    SUM(amount)                         AS total_revenue,
+    COUNT(payment_id)                   AS n_transaksi,
+    COUNT(DISTINCT customer_id)         AS n_pelanggan
+  FROM payment
+  GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
+  ORDER BY bulan;
+"
+df_ts <- dbGetQuery(con, query_ts)
+dbDisconnect(con)
+
+df_ts$bulan_date <- as.Date(paste0(df_ts$bulan, "-01"))
+```
+
+```{r data-preview, echo=FALSE}
+# Tampilkan 10 baris pertama
+df_raw %>%
+  head(10) %>%
+  select(customer_id, customer_name, recency, frequency, monetary) %>%
+  kable(
+    caption = "Tabel 1. Preview Data RFM (10 Baris Pertama)",
+    col.names = c("ID", "Nama Pelanggan", "Recency (hari)", "Frequency", "Monetary ($)"),
+    digits = 2,
+    align = c("c","l","c","c","r")
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped","hover","condensed","responsive"),
+    full_width = FALSE,
+    font_size = 13
+  ) %>%
+  row_spec(0, bold = TRUE, background = "#4361ee", color = "white")
+```
+
+### 2.3 Ringkasan Dataset
+
+```{r summary-stats}
+summary_rfm <- df_raw %>%
+  summarise(
+    n_pelanggan    = n(),
+    recency_mean   = round(mean(recency), 1),
+    recency_sd     = round(sd(recency), 1),
+    freq_mean      = round(mean(frequency), 1),
+    freq_sd        = round(sd(frequency), 1),
+    monetary_mean  = round(mean(monetary), 2),
+    monetary_sd    = round(sd(monetary), 2),
+    monetary_total = round(sum(monetary), 2)
+  )
+```
+
+Total Pelanggan Aktif: `r summary_rfm$n_pelanggan`
+
+Rata-rata Frekuensi Rental: `r summary_rfm$freq_mean`
+
+Rata-rata Nilai Transaksi: $`r summary_rfm$monetary_mean`
+
+Rata-rata Recency (hari): `r summary_rfm$recency_mean`
+
+Total Pendapatan: $`r format(summary_rfm$monetary_total, big.mark=",")`
+
+## 3. Eksplorasi Data (EDA)
+
+### 3.1 Distribusi Variabel RFM
+
+```{r eda-distribution, fig.height=7}
+# --- Warna tema ---
+pal <- c("#4361ee", "#10b981", "#f59e0b")
+df_raw <- df_raw %>%
+  mutate(across(c(recency, frequency, monetary), as.numeric))
+p_rec <- ggplot(df_raw, aes(x = recency)) +
+  geom_histogram(fill = pal[1], color = "white", bins = 40, alpha = 0.85) +
+  geom_vline(aes(xintercept = mean(recency)), color = "#ef4444",
+             linetype = "dashed", linewidth = 1) +
+  annotate("text", x = mean(df_raw$recency) + 5, y = Inf,
+           label = paste0("Mean = ", round(mean(df_raw$recency),1), " hari"),
+           vjust = 2, hjust = 0, color = "#ef4444", size = 3.5, fontface = "bold") +
+  labs(title = "Distribusi Recency",
+       subtitle = "Hari sejak transaksi terakhir",
+       x = "Recency (hari)", y = "Jumlah Pelanggan") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", color = "#1a202c"),
+        plot.subtitle = element_text(color = "#6b7280"))
+
+p_freq <- ggplot(df_raw, aes(x = frequency)) +
+  geom_histogram(fill = pal[2], color = "white", bins = 35, alpha = 0.85) +
+  geom_vline(aes(xintercept = mean(frequency)), color = "#ef4444",
+             linetype = "dashed", linewidth = 1) +
+  annotate("text", x = mean(df_raw$frequency) + 0.5, y = Inf,
+           label = paste0("Mean = ", round(mean(df_raw$frequency),1)),
+           vjust = 2, hjust = 0, color = "#ef4444", size = 3.5, fontface = "bold") +
+  labs(title = "Distribusi Frequency",
+       subtitle = "Total jumlah film yang disewa",
+       x = "Frequency (jumlah rental)", y = "Jumlah Pelanggan") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", color = "#1a202c"),
+        plot.subtitle = element_text(color = "#6b7280"))
+
+p_mon <- ggplot(df_raw, aes(x = monetary)) +
+  geom_histogram(fill = pal[3], color = "white", bins = 40, alpha = 0.85) +
+  geom_vline(aes(xintercept = mean(monetary)), color = "#ef4444",
+             linetype = "dashed", linewidth = 1) +
+  annotate("text", x = mean(df_raw$monetary) + 2, y = Inf,
+           label = paste0("Mean = $", round(mean(df_raw$monetary),2)),
+           vjust = 2, hjust = 0, color = "#ef4444", size = 3.5, fontface = "bold") +
+  labs(title = "Distribusi Monetary",
+       subtitle = "Total pembayaran per pelanggan (USD)",
+       x = "Monetary ($)", y = "Jumlah Pelanggan") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", color = "#1a202c"),
+        plot.subtitle = element_text(color = "#6b7280"))
+
+(p_rec | p_freq | p_mon) +
+  plot_annotation(
+    title    = "Gambar 1. Distribusi Variabel RFM",
+    subtitle = "Garis merah putus-putus menunjukkan nilai rata-rata masing-masing variabel",
+    theme    = theme(
+      plot.title    = element_text(face = "bold", size = 14, color = "#1a202c"),
+      plot.subtitle = element_text(color = "#6b7280")
+    )
+  )
+```
+
+<div class="info-box insight">
+<div class="info-box-title">Interpretasi Distribusi</div>
+
+- **Recency**: Distribusi tidak menyebar merata, melainkan terkonsentrasi pada dua kelompok utama. Sebagian pelanggan memiliki nilai recency sangat rendah (baru melakukan transaksi), sementara sebagian lainnya memiliki recency sangat tinggi (sudah lama tidak menyewa). Pola ini menunjukkan adanya perbedaan yang cukup jelas antara pelanggan yang masih aktif dan pelanggan yang cenderung tidak aktif. 
+- **Frequency**: Distribusi cenderung membentuk pola mendekati normal dengan konsentrasi terbesar pada kisaran (*20–30 kali rental*), dan rata-rata sebesar *26,8*. Hal ini menunjukkan mayoritas pelanggan memiliki frekuensi penyewaan yang relatif stabil, sementara hanya sebagian kecil pelanggan berada pada frekuensi yang jauh lebih rendah atau lebih tinggi.
+- **Monetary**: Distribusi juga terkonsentrasi di sekitar nilai tengah, terutama pada kisaran *US$90–130*, dengan rata-rata sebesar *US$112,58*. Sebagian kecil pelanggan memiliki nilai monetary yang lebih tinggi dibanding mayoritas, menandakan terdapat pelanggan dengan kontribusi pendapatan lebih besar, meskipun perbedaannya tidak terlalu ekstrem.
+</div>
+
+### 3.2 Tren Pendapatan Bulanan (Time Series)
+
+```{r time-series, fig.height=5.5}
+ggplot(df_ts, aes(x = bulan_date)) +
+  # Area bawah kurva
+  geom_area(aes(y = total_revenue), fill = "#4361ee", alpha = 0.15) +
+  # Garis utama revenue
+  geom_line(aes(y = total_revenue, color = "Total Revenue ($)"),
+            linewidth = 1.3) +
+  # Titik data
+  geom_point(aes(y = total_revenue, color = "Total Revenue ($)"),
+             size = 3, shape = 21, fill = "white", stroke = 1.5) +
+  # Garis n_transaksi (sumbu kedua, dikali faktor)
+  geom_line(aes(y = n_transaksi * 1.2, color = "Jumlah Transaksi (×1.2)"),
+            linewidth = 1, linetype = "dashed") +
+  scale_y_continuous(
+    name = "Total Revenue (USD)",
+    labels = dollar_format(),
+    sec.axis = sec_axis(~ . / 1.2, name = "Jumlah Transaksi",
+                        labels = comma_format())
+  ) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "1 month") +
+  scale_color_manual(values = c("Total Revenue ($)" = "#4361ee",
+                                "Jumlah Transaksi (×1.2)" = "#f59e0b")) +
+  labs(
+    title    = "Gambar 2. Tren Pendapatan & Volume Transaksi Bulanan",
+    subtitle = "Periode data rental Sakila",
+    x        = NULL, y = NULL, color = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title      = element_text(face = "bold", size = 14, color = "#1a202c"),
+    plot.subtitle   = element_text(color = "#6b7280"),
+    legend.position = "top",
+    legend.box.background = element_rect(fill = "white", color = "#e5e7eb"),
+    axis.text.x     = element_text(angle = 45, hjust = 1, size = 9),
+    panel.grid.minor = element_blank()
+  )
+```
+
+<div class="info-box insight">
+<div class="info-box-title">Interpretasi Time Series</div>
+
+Grafik time series menunjukkan bahwa pendapatan dan volume transaksi bulanan memiliki pola pergerakan yang searah, di mana peningkatan revenue terjadi bersamaan dengan meningkatnya jumlah transaksi. Puncak aktivitas rental terjadi pada *Juli 2005* ketika total pendapatan dan jumlah transaksi mencapai nilai tertinggi. Setelah periode tersebut, pendapatan dan volume transaksi mengalami penurunan secara bertahap hingga awal tahun 2006, menunjukkan adanya penurunan aktivitas bisnis setelah fase permintaan tinggi.
+</div>
+
+### 3.3 Hubungan Antar Variabel RFM
+
+```{r eda-scatter, fig.height=6}
+# Scatter plot Frequency vs Monetary dengan density marginal
+p_scatter <- ggplot(df_raw, aes(x = frequency, y = monetary)) +
+  geom_point(aes(color = recency), alpha = 0.6, size = 2.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "#ef4444",
+              fill = "#fecaca", linewidth = 1) +
+  scale_color_viridis_c(
+    option = "plasma",
+    name   = "Recency\n(hari)",
+    direction = -1
+  ) +
+  labs(
+    title    = "Gambar 3. Hubungan Frequency vs Monetary",
+    subtitle = "Warna titik menunjukkan nilai Recency; garis merah = regresi linear",
+    x        = "Frequency (jumlah rental)",
+    y        = "Monetary (total pembayaran, $)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title    = element_text(face = "bold", size = 13, color = "#1a202c"),
+    plot.subtitle = element_text(color = "#6b7280"),
+    legend.position = "right"
+  )
+
+ggMarginal(p_scatter, type = "histogram",
+           fill = "#4361ee", color = "white", alpha = 0.7)
+```
+<div class="info-box insight">
+<div class="info-box-title">Interpretasi Scatter Plot</div>
+
+Grafik menunjukkan hubungan positif yang kuat antara frequency dan monetary, di mana pelanggan yang lebih sering melakukan rental cenderung menghasilkan total pembayaran yang lebih tinggi. Selain itu, pelanggan dengan nilai recency lebih rendah (lebih aktif baru-baru ini) umumnya berada pada kelompok dengan frequency dan monetary yang lebih tinggi, sehingga mengindikasikan bahwa pelanggan aktif memberikan kontribusi revenue yang lebih besar bagi bisnis.
+</div>
+
+```{r eda-boxplot, fig.height=4.5}
+# Boxplot distribusi monetary berdasarkan kuartil frequency
+df_raw <- df_raw %>%
+  mutate(freq_group = cut(frequency,
+                          breaks = quantile(frequency, probs = 0:4/4),
+                          labels = c("Q1 (Rendah)","Q2","Q3","Q4 (Tinggi)"),
+                          include.lowest = TRUE))
+
+ggplot(df_raw, aes(x = freq_group, y = monetary, fill = freq_group)) +
+  geom_boxplot(alpha = 0.8, outlier.shape = 21,
+               outlier.fill = "white", outlier.color = "gray50") +
+  scale_fill_manual(values = c("#bfdbfe","#93c5fd","#60a5fa","#2563eb")) +
+  labs(
+    title    = "Gambar 4. Distribusi Monetary Berdasarkan Kuartil Frequency",
+    subtitle = "Pelanggan dengan frekuensi lebih tinggi cenderung membayar lebih banyak",
+    x        = "Kelompok Frequency (Kuartil)",
+    y        = "Total Monetary ($)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title    = element_text(face = "bold", color = "#1a202c"),
+    plot.subtitle = element_text(color = "#6b7280"),
+    legend.position = "none"
+  )
+```
+
+<div class="info-box insight">
+<div class="info-box-title">Interpretasi Korelasi RFM</div>
+
+Scatter plot menunjukkan **korelasi positif yang kuat** antara Frequency dan Monetary, pelanggan yang lebih sering menyewa secara konsisten menghabiskan lebih banyak uang. Boxplot per kuartil mempertegas pola ini secara kategoris.
+</div>
+
+### 3.4 Matriks Korelasi & Pairplot RFM
+
+```{r pairplot, fig.height=6}
+df_rfm_plot <- df_raw %>% select(recency, frequency, monetary)
+
+ggpairs(
+  df_rfm_plot,
+  columnLabels = c("Recency", "Frequency", "Monetary"),
+  upper = list(continuous = wrap("cor", size = 5, color = "#4361ee")),
+  lower = list(continuous = wrap("points", alpha = 0.3, size = 0.8, color = "#7c3aed")),
+  diag  = list(continuous = wrap("densityDiag", fill = "#4361ee", alpha = 0.4))
+) +
+  labs(
+    title    = "Gambar 5. Matriks Pairplot Variabel RFM",
+    subtitle = "Diagonal: distribusi; Atas: korelasi; Bawah: scatter plot"
+  ) +
+  theme_bw(base_size = 11) +
+  theme(
+    plot.title    = element_text(face = "bold", color = "#1a202c"),
+    plot.subtitle = element_text(color = "#6b7280")
+  )
+```
+<div class="info-box insight">
+<div class="info-box-title">Interpretasi Pair Plot</div>
+
+Matriks pairplot menunjukkan bahwa variabel Frequency dan Monetary memiliki hubungan positif yang sangat kuat dengan korelasi sebesar **0,873**, yang berarti pelanggan yang lebih sering melakukan rental cenderung menghasilkan total pembayaran yang lebih tinggi. Sementara itu, variabel Recency memiliki korelasi yang sangat lemah terhadap Frequency maupun Monetary, sehingga jarak waktu sejak transaksi terakhir tidak terlalu berkaitan langsung dengan intensitas rental maupun besarnya pembayaran pelanggan.
+</div>
+
+<div class="divider"></div>
+
+## 4. Pra-Pemrosesan untuk Clustering
+
+### 4.1 Normalisasi (Z-Score Standardization)
+
+Sebelum menerapkan K-Means, seluruh variabel harus dinormalisasi karena K-Means sensitif terhadap skala. Kami menggunakan **Z-Score Standardization**:
+
+<div class="info-box formula">
+<div class="info-box-title">Formula Z-Score Standardization</div>
+
+$$
+z_i = \frac{x_i - \bar{x}}{s}
+$$
+
+di mana $\bar{x}$ adalah rata-rata sampel dan $s$ adalah simpangan baku sampel. Setelah transformasi: $\mathbb{E}[z] = 0$ dan $\text{Var}(z) = 1$.
+
+Untuk Recency, nilai *lebih kecil = lebih baik* (pelanggan lebih baru), sehingga kita gunakan **inversi**:
+
+$$
+\text{Recency\_inv} = -\text{Recency}
+$$
+
+</div>
+
+```{r normalization}
+df_rfm <- df_raw %>%
+  select(customer_id, customer_name, recency, frequency, monetary) %>%
+  mutate(recency_inv = -recency)   # invert: makin kecil recency, makin "baik"
+
+# Z-Score normalization
+df_scaled <- df_rfm %>%
+  mutate(
+    z_recency   = scale(recency_inv)[,1],
+    z_frequency = scale(frequency)[,1],
+    z_monetary  = scale(monetary)[,1]
+  )
+
+mat_scaled <- df_scaled %>%
+  select(z_recency, z_frequency, z_monetary) %>%
+  as.matrix()
+
+# Tampilkan ringkasan hasil normalisasi
+data.frame(
+  Variabel = c("z_recency","z_frequency","z_monetary"),
+  Mean     = round(colMeans(mat_scaled), 4),
+  SD       = round(apply(mat_scaled, 2, sd), 4),
+  Min      = round(apply(mat_scaled, 2, min), 3),
+  Max      = round(apply(mat_scaled, 2, max), 3)
+) %>%
+  kable(caption = "Tabel 2. Ringkasan Statistik Setelah Normalisasi Z-Score") %>%
+  kable_styling(bootstrap_options = c("striped","hover","condensed"),
+                full_width = FALSE, font_size = 13) %>%
+  row_spec(0, bold = TRUE, background = "#7c3aed", color = "white")
+```
+
+<div class="divider"></div>
+
+## 5. Penentuan Jumlah Cluster Optimal
+
+### 5.1 Metode Elbow (WSS)
+
+Metode Elbow mengukur **Within-Cluster Sum of Squares (WSS)** untuk setiap $k$. Jumlah cluster optimal adalah di mana penurunan WSS mulai melandai (membentuk "siku"):
+
+<div class="info-box formula">
+<div class="info-box-title"> Formula WSS</div>
+
+$$
+WSS(k) = \sum_{j=1}^{k} \sum_{x_i \in C_j} \| x_i - \mu_j \|^2
+$$
+
+di mana $\mu_j$ adalah centroid dari cluster $C_j$ dan $\| \cdot \|^2$ adalah jarak Euclidean kuadrat.
+</div>
+
+```{r elbow, fig.height=4.5}
+set.seed(42)
+wss_values <- sapply(1:10, function(k) {
+  kmeans(mat_scaled, centers = k, nstart = 25, iter.max = 100)$tot.withinss
+})
+
+elbow_df <- data.frame(k = 1:10, wss = wss_values)
+
+ggplot(elbow_df, aes(x = k, y = wss)) +
+  geom_line(color = "#4361ee", linewidth = 1.3) +
+  geom_point(size = 4, color = "#4361ee", shape = 21, fill = "white", stroke = 2) +
+  geom_point(data = elbow_df[elbow_df$k == 3, ],
+             aes(x = k, y = wss),
+             size = 6, color = "#ef4444", shape = 21, fill = "#fecaca", stroke = 2) +
+  annotate("text", x = 4.3, y = elbow_df$wss[3] + 20,
+           label = "Elbow di k=3", color = "#ef4444",
+           fontface = "bold", size = 4) +
+  geom_vline(xintercept = 3, linetype = "dashed", color = "#ef4444", alpha = 0.5) +
+  scale_x_continuous(breaks = 1:10) +
+  scale_y_continuous(labels = comma_format()) +
+  labs(
+    title    = "Gambar 6. Elbow Method — Penentuan Jumlah Cluster Optimal",
+    subtitle = "Titik 'siku' mengindikasikan k optimal",
+    x        = "Jumlah Cluster (k)",
+    y        = "Within-Cluster Sum of Squares (WSS)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title    = element_text(face = "bold", color = "#1a202c"),
+    plot.subtitle = element_text(color = "#6b7280"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+### 5.2 Silhouette Score
+
+**Silhouette Score** mengukur seberapa mirip suatu titik dengan clusternya sendiri dibanding cluster tetangga:
+
+<div class="info-box formula">
+<div class="info-box-title"> Formula Silhouette</div>
+
+$$
+s(i) = \frac{b(i) - a(i)}{\max\{a(i),\, b(i)\}}
+$$
+
+- $a(i)$: rata-rata jarak titik $i$ ke titik **dalam** cluster yang sama (*intra-cluster distance*)
+- $b(i)$: rata-rata jarak titik $i$ ke titik dalam **cluster terdekat** yang berbeda (*nearest-cluster distance*)
+- $s(i) \in [-1, 1]$; semakin mendekati $+1$ semakin baik
+</div>
+
+```{r silhouette, fig.height=4.5}
+set.seed(42)
+sil_values <- sapply(2:10, function(k) {
+  km  <- kmeans(mat_scaled, centers = k, nstart = 25, iter.max = 100)
+  sil <- silhouette(km$cluster, dist(mat_scaled))
+  mean(sil[, 3])
+})
+
+sil_df <- data.frame(k = 2:10, silhouette = sil_values)
+
+ggplot(sil_df, aes(x = k, y = silhouette)) +
+  geom_line(color = "#10b981", linewidth = 1.3) +
+  geom_point(size = 4, color = "#10b981", shape = 21, fill = "white", stroke = 2) +
+  geom_point(data = sil_df[which.max(sil_df$silhouette), ],
+             aes(x = k, y = silhouette),
+             size = 6, color = "#ef4444", shape = 21, fill = "#fecaca", stroke = 2) +
+  annotate("text",
+           x = sil_df$k[which.max(sil_df$silhouette)] + 0.3,
+           y = max(sil_df$silhouette) + 0.005,
+           label = paste0("Optimal k=", sil_df$k[which.max(sil_df$silhouette)]),
+           color = "#ef4444", fontface = "bold", size = 4) +
+  scale_x_continuous(breaks = 2:10) +
+  labs(
+    title    = "Gambar 7. Silhouette Score — Validasi Jumlah Cluster",
+    subtitle = "Nilai lebih tinggi = cluster lebih kohesif dan terpisah",
+    x        = "Jumlah Cluster (k)",
+    y        = "Average Silhouette Score"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title    = element_text(face = "bold", color = "#1a202c"),
+    plot.subtitle = element_text(color = "#6b7280"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+<div class="info-box result">
+<div class="info-box-title"> Keputusan: k = 3/div>
+
+Baik Elbow Method maupun Silhouette Score menunjukkan konsistensi di **k = 3** sebagai jumlah cluster yang optimal. Dengan 3 cluster, kita mendapat pemisahan yang bermakna secara bisnis sekaligus mempertahankan interpretabilitas yang baik.
+</div>
+
+<div class="divider"></div>
+
+## 6. K-Means Clustering
+
+### 6.1 Algoritma & Formula
+
+<div class="info-box formula">
+<div class="info-box-title"> Algoritma K-Means</div>
+
+K-Means meminimalkan fungsi objektif:
+
+$$
+J = \sum_{j=1}^{k} \sum_{x_i \in C_j} \| x_i - \mu_j \|^2
+$$
+
+**Langkah iteratif:**
+
+1. Inisialisasi $k$ centroid secara acak (menggunakan **K-Means++** untuk stabilitas)
+2. **Assignment step**: $C_j = \{ x_i : \| x_i - \mu_j \|^2 \leq \| x_i - \mu_l \|^2 \ \forall l \neq j \}$
+3. **Update step**: $\mu_j = \frac{1}{|C_j|} \sum_{x_i \in C_j} x_i$
+4. Ulangi langkah 2–3 hingga konvergen ($\Delta J < \varepsilon$)
+</div>
+
+```{r kmeans-run}
+set.seed(42)
+km_result <- kmeans(
+  mat_scaled,
+  centers  = 3,
+  nstart   = 50,     
+  iter.max = 500,
+  algorithm = "Hartigan-Wong"
+)
+
+# Gabungkan label cluster ke data asli
+df_clustered <- df_rfm %>%
+  mutate(cluster = factor(km_result$cluster,
+                          levels = c(1,2,3)))
+
+# Statistik per cluster (dalam skala asli)
+cluster_profile <- df_clustered %>%
+  group_by(cluster) %>%
+  summarise(
+    n_pelanggan     = n(),
+    recency_mean    = round(mean(recency), 1),
+    frequency_mean  = round(mean(frequency), 1),
+    monetary_mean   = round(mean(monetary), 2),
+    monetary_total  = round(sum(monetary), 2)
+  ) %>%
+  mutate(pct_pelanggan = round(n_pelanggan / sum(n_pelanggan) * 100, 1))
+
+# Labeling cluster berdasarkan profil
+cluster_profile <- cluster_profile %>%
+  mutate(
+    label = case_when(
+      monetary_mean == max(monetary_mean) ~ "Champions",
+      recency_mean  == min(recency_mean)  ~ " Recent Active",
+      TRUE ~ " Loyal Customers"
+    )
+  )
+```
+
+
+```{r cluster-plot-original, fig.height=6}
+library(ggplot2)
+
+ggplot(
+  df_clustered,
+  aes(
+    x = frequency,
+    y = monetary,
+    color = cluster
+  )
+) +
+  geom_point(size = 2.5, alpha = .75) +
+  stat_ellipse(
+    aes(fill = cluster),
+    geom = "polygon",
+    alpha = .12,
+    color = NA
+  ) +
+  scale_color_manual(
+    values = c("#4361ee","#10b981","#f59e0b","#ef4444")
+  ) +
+  scale_fill_manual(
+    values = c("#4361ee","#10b981","#f59e0b","#ef4444")
+  ) +
+  labs(
+    title = "Gambar 8. Visualisasi Cluster Pelanggan",
+    subtitle = "Segmentasi berdasarkan Frequency dan Monetary",
+    x = "Frequency (jumlah rental)",
+    y = "Monetary ($)",
+    color = "Cluster",
+    fill = "Cluster"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", color = "#1a202c"),
+    plot.subtitle = element_text(color = "#6b7280")
+  )
+```
+
+### 6.3 Silhouette Plot per Cluster
+
+```{r silhouette-plot, fig.height=5.5}
+sil_final <- silhouette(km_result$cluster, dist(mat_scaled))
+
+fviz_silhouette(
+  sil_final,
+  palette  = c("#4361ee","#10b981","#f59e0b","#ef4444"),
+  ggtheme  = theme_minimal(base_size = 11)
+) +
+  labs(
+    title    = "Gambar 9. Silhouette Plot — Kualitas Setiap Cluster",
+    subtitle = paste0("Average silhouette width = ",
+                      round(mean(sil_final[,3]), 3))
+  ) +
+  theme(
+    plot.title    = element_text(face = "bold", color = "#1a202c"),
+    plot.subtitle = element_text(color = "#6b7280"),
+    legend.position = "bottom"
+  )
+```
+
+<div class="divider"></div>
+
+## 7. Profiling & Interpretasi Cluster
+
+### 7.1 Tabel Profil Cluster
+
+```{r cluster-table, echo=FALSE}
+cluster_profile %>%
+  select(cluster, label, n_pelanggan, pct_pelanggan,
+         recency_mean, frequency_mean, monetary_mean, monetary_total) %>%
+  kable(
+    caption   = "Tabel 3. Profil Lengkap Setiap Cluster Pelanggan",
+    col.names = c("Cluster","Label","N Pelanggan","% Pelanggan",
+                  "Recency (hari)","Freq (rata-rata)","Monetary ($, rata-rata)","Total Revenue ($)"),
+    digits    = 2,
+    align     = c("c","l","c","c","c","c","r","r")
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped","hover","condensed","responsive"),
+    full_width = TRUE, font_size = 13
+  ) %>%
+  row_spec(0, bold = TRUE, background = "#1a1a2e", color = "white") %>%
+  column_spec(2, bold = TRUE)
+```
+
+### 7.2 Radar Chart — Perbandingan Profil Cluster
+
+```{r radar-chart, fig.height=6}
+# Normalisasi centroid ke [0,1] untuk radar
+centroid_df <- as.data.frame(km_result$centers)
+colnames(centroid_df) <- c("Recency_inv","Frequency","Monetary")
+
+centroid_norm <- centroid_df %>%
+  mutate(across(everything(), ~ (. - min(.)) / (max(.) - min(.)))) %>%
+  mutate(cluster = factor(1:3)) %>%
+  pivot_longer(-cluster, names_to = "variable", values_to = "value")
+
+ggplot(centroid_norm, aes(x = variable, y = value, color = cluster, group = cluster)) +
+  geom_polygon(aes(fill = cluster), alpha = 0.15, linewidth = 1) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3.5, shape = 21, fill = "white", stroke = 2) +
+  coord_polar() +
+  scale_color_manual(values = c("#4361ee","#10b981","#f59e0b","#ef4444"),
+                     labels = cluster_profile$label) +
+  scale_fill_manual(values  = c("#4361ee","#10b981","#f59e0b","#ef4444"),
+                    labels  = cluster_profile$label) +
+  labs(
+    title    = "Gambar 10. Radar Chart — Perbandingan Profil Cluster",
+    subtitle = "Nilai dinormalisasi ke [0,1]; lebih luar = nilai lebih tinggi",
+    color    = "Cluster", fill = "Cluster",
+    x = NULL, y = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title      = element_text(face = "bold", color = "#1a202c"),
+    plot.subtitle   = element_text(color = "#6b7280"),
+    legend.position = "bottom",
+    axis.text.x     = element_text(face = "bold", size = 11)
+  )
+```
+<div class="info-box insight">
+<div class="info-box-title">Interpretasi Radar Plot</div>
+
+Radar chart menunjukkan perbedaan karakteristik yang jelas antar cluster pelanggan. Cluster berwarna oranye memiliki nilai Frequency dan Monetary yang tinggi serta nilai Recency rendah, yang menunjukkan kelompok pelanggan aktif dengan intensitas rental tinggi dan kontribusi revenue besar. Sebaliknya, cluster biru memiliki nilai Recency lebih tinggi tetapi Frequency dan Monetary lebih rendah, sehingga merepresentasikan pelanggan yang sudah lama tidak aktif dan memberikan kontribusi transaksi yang lebih kecil terhadap bisnis.
+</div>
+
+### 7.3 Distribusi Cluster pada Dimensi RFM
+
+```{r cluster-density, fig.height=7}
+df_long <- df_clustered %>%
+  pivot_longer(cols = c(recency, frequency, monetary),
+               names_to = "variable", values_to = "value") %>%
+  mutate(variable = factor(variable,
+                           levels = c("recency","frequency","monetary"),
+                           labels = c("Recency (hari)",
+                                      "Frequency (jumlah rental)",
+                                      "Monetary (total $)")))
+
+ggplot(df_long, aes(x = value, y = cluster, fill = cluster)) +
+  geom_density_ridges(alpha = 0.75, scale = 1.2,
+                      quantile_lines = TRUE, quantiles = 2) +
+  scale_fill_manual(values = c("#4361ee","#10b981","#f59e0b","#ef4444")) +
+  facet_wrap(~variable, scales = "free_x", ncol = 1) +
+  labs(
+    title    = "Gambar 11. Distribusi Variabel RFM per Cluster (Ridge Plot)",
+    subtitle = "Garis vertikal = median; perbedaan distribusi menunjukkan karakteristik unik tiap cluster",
+    x        = "Nilai", y        = "Cluster", fill = "Cluster"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title    = element_text(face = "bold", color = "#1a202c"),
+    plot.subtitle = element_text(color = "#6b7280"),
+    legend.position = "none",
+    strip.text    = element_text(face = "bold")
+  )
+```
+
+### 7.4 Komposisi Ukuran & Kontribusi Revenue Cluster
+
+```{r cluster-composition, fig.height=4.5}
+p_size <- ggplot(cluster_profile, aes(x = reorder(label, -n_pelanggan),
+                                      y = n_pelanggan, fill = cluster)) +
+  geom_col(width = 0.7, alpha = 0.9) +
+  geom_text(aes(label = paste0(pct_pelanggan, "%")),
+            vjust = -0.4, fontface = "bold", size = 3.8) +
+  scale_fill_manual(values = c("#4361ee","#10b981","#f59e0b","#ef4444")) +
+  labs(title = "Ukuran Cluster",
+       x = NULL, y = "Jumlah Pelanggan") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 15, hjust = 1),
+        plot.title  = element_text(face = "bold"))
+
+p_rev <- ggplot(cluster_profile, aes(x = reorder(label, -monetary_total),
+                                     y = monetary_total, fill = cluster)) +
+  geom_col(width = 0.7, alpha = 0.9) +
+  geom_text(aes(label = paste0("$", format(round(monetary_total), big.mark=","))),
+            vjust = -0.4, fontface = "bold", size = 3.5) +
+  scale_fill_manual(values = c("#4361ee","#10b981","#f59e0b","#ef4444")) +
+  scale_y_continuous(labels = dollar_format()) +
+  labs(title = "Total Revenue per Cluster",
+       x = NULL, y = "Total Revenue ($)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 15, hjust = 1),
+        plot.title  = element_text(face = "bold"))
+
+(p_size | p_rev) +
+  plot_annotation(
+    title    = "Gambar 12. Komposisi Pelanggan & Kontribusi Revenue per Cluster",
+    theme    = theme(plot.title = element_text(face = "bold", size = 13, color = "#1a202c"))
+  )
+```
+<div class="info-box insight">
+<div class="info-box-title">Interpretasi Radar Plot</div>
+
+Grafik menunjukkan bahwa cluster Loyal Customers memiliki jumlah pelanggan terbesar, yaitu sekitar 43% dari total pelanggan, dengan kontribusi revenue yang juga tinggi. Namun, cluster Champions meskipun jumlah pelanggannya lebih sedikit (32,7%), justru memberikan total revenue terbesar, sehingga menunjukkan bahwa kelompok ini merupakan pelanggan paling bernilai bagi bisnis. Sementara itu, cluster Recent/Active memiliki proporsi pelanggan dan kontribusi revenue paling rendah, yang mengindikasikan bahwa kelompok ini masih memiliki potensi untuk ditingkatkan menjadi pelanggan loyal di masa mendatang.
+</div>
+
+<div class="divider"></div>
+
+## 8. Interpretasi & Rekomendasi Bisnis
+
+```{r interpretation-table, echo=FALSE}
+rekomendasi <- data.frame(
+  Cluster  = c("Champions", " Loyal Customers",
+               " Recent Active"),
+  Deskripsi = c(
+    "Pelanggan premium: sering menyewa, membayar paling banyak, dan masih aktif baru-baru ini.",
+    "Pelanggan setia: frekuensi tinggi dan monetary baik, namun recency sedikit lebih lama.",
+    "Pelanggan baru atau baru saja kembali aktif: recency sangat rendah, namun belum banyak menyewa."
+  ),
+  Strategi = c(
+    "Program VIP/loyalitas eksklusif. Early access film baru. Diskon bundling premium.",
+    "Pertahankan engagement dengan newsletter rekomendasi film. Reward poin per rental.",
+    "Sambut dengan program onboarding. Dorong eksplorasi genre baru. Promo bundle pertama."
+  )
+)
+
+rekomendasi %>%
+  kable(
+    caption   = "Tabel 4. Profil & Rekomendasi Strategi per Segmen Pelanggan",
+    col.names = c("Segmen Pelanggan","Karakteristik","Strategi Pemasaran yang Disarankan")
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped","hover"),
+    full_width = TRUE, font_size = 13
+  ) %>%
+  row_spec(0, bold = TRUE, background = "#1a1a2e", color = "white") %>%
+  column_spec(1, bold = TRUE, width = "18%") %>%
+  column_spec(2, width = "37%") %>%
+  column_spec(3, width = "45%")
+```
+
+<div class="divider"></div>
+
+## 9. Kesimpulan
+
+<div class="info-box result">
+<div class="info-box-title"> Ringkasan Temuan</div>
+
+Analisis segmentasi pelanggan menggunakan **K-Means Clustering** pada database Sakila berhasil mengidentifikasi **3 segmen pelanggan yang berbeda secara signifikan**:
+
+1. **Champions** — kelompok kecil namun sangat berharga, berkontribusi besar pada total pendapatan
+2. **Loyal Customers** — tulang punggung bisnis dengan konsistensi tinggi
+3. **Recent Active** — potensi pertumbuhan yang perlu dipupuk sejak dini
+
+**Validitas clustering** dikonfirmasi melalui Elbow Method dan Silhouette Score yang konsisten menunjukkan $k=3$ sebagai jumlah cluster optimal, dengan nilai silhouette rata-rata yang mengindikasikan pemisahan cluster yang baik.
+
+**Implikasi praktis**: Bisnis tidak seharusnya memperlakukan semua pelanggan secara seragam. Strategi *one-size-fits-all* berpotensi membuang sumber daya pada pelanggan yang sudah loyal sekaligus mengabaikan pelanggan yang hampir pergi.
+</div>
+
+<div class="info-box warning">
+<div class="info-box-title"> Catatan & Keterbatasan</div>
+
+- Database Sakila adalah data **simulasi** temuan ini bersifat ilustratif untuk keperluan akademis.
+</div>
+
+
+
+<div class="report-footer">
+    Laporan ini dibuat untuk keperluan tugas analisis data. Seluruh data bersumber dari MySQL Sakila Sample Database.
+  </p>
+</div>
